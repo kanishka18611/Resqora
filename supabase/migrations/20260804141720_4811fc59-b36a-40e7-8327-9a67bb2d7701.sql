@@ -1,0 +1,1 @@
+ALTER TABLE public.medai_conversations ADD COLUMN IF NOT EXISTS is_favourite boolean NOT NULL DEFAULT false;
