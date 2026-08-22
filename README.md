@@ -457,8 +457,7 @@ RESQORA/
 │   ├── context/                     # React Context (auth, theme)
 │   ├── hooks/                       # Custom React hooks
 │   ├── integrations/
-│   │   ├── supabase/                # Supabase client & types
-│   │   └── lovable/                 # OAuth integration
+│   │   └── supabase/                # Supabase client & types
 │   ├── styles.css                   # Global styles
 │   ├── server.ts                    # SSR error handler
 │   └── start.ts                     # App entry point
@@ -504,9 +503,13 @@ RESQORA/
    ```
    Then edit `.env` and add your keys:
    - `VITE_SUPABASE_URL` – Supabase project URL
-   - `VITE_SUPABASE_ANON_KEY` – Supabase anonymous key (client-safe)
-   - `VITE_FIREBASE_*` – Firebase configuration values
-   - `VITE_EMAILJS_*` – EmailJS credentials
+  - `VITE_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` – Supabase client and server credentials
+  - `VITE_FIREBASE_*`, `FIREBASE_*` – Firebase browser configuration, FCM VAPID key, and server service-account JSON
+  - `VITE_EMAILJS_SERVICE_ID`, `VITE_EMAILJS_PUBLIC_KEY`, `VITE_EMAILJS_TEMPLATE_ID` – EmailJS credentials
+  - `GOOGLE_MAPS_API_KEY`, `VITE_GOOGLE_MAPS_API_KEY` – server and browser Maps credentials
+  - `GATEWAYAPI_API_KEY` – optional GatewayAPI SMS credential; manual alert channels remain available without it
+  - `OPENROUTER_API_KEY` – server-only OpenRouter key for the free AI models
+  - `OPENROUTER_MODEL` – optional model override; defaults to `google/gemma-3-27b-it:free`
 
    **⚠️ CRITICAL**: 
    - Never commit `.env` to version control
@@ -746,18 +749,6 @@ Create placeholder pages for all navigation items with consistent layouts.
 Do not implement authentication, emergency logic, AI functionality, databases, APIs, or backend features yet.
 
 Focus only on building a polished, scalable frontend foundation with reusable components and excellent user experience.
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://resqora.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/da219962-6d52-41d2-b0fa-8e3748002b70).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 

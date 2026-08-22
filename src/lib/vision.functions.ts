@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { runOpenRouter } from "@/lib/openrouter.server";
 
 const Input = z.object({
   // Only base64 image data URLs — never an arbitrary URL the server would fetch.
@@ -28,38 +29,19 @@ Respond ONLY with compact JSON:
 If the photo shows no emergency, use severity "low", a low confidence, and say so in the summary.`;
 
 export const analyzeEmergencyImage = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => Input.parse(input))
+  .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<AccidentAnalysis> => {
     const { enforceLimit } = await import("@/lib/rate-limit.server");
     enforceLimit(getRequest(), "vision", 8, 60_000);
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("AI is not configured");
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "content-type": "application/json", "Lovable-API-Key": key },
-      body: JSON.stringify({
-        model: "google/gemini-3.6-flash",
-        messages: [
-          { role: "system", content: SYSTEM },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Analyse this scene for an emergency response." },
-              { type: "image_url", image_url: { url: data.imageDataUrl } },
-            ],
-          },
-        ],
-      }),
+    const text = await runOpenRouter({
+      system: SYSTEM,
+      user: [
+        { type: "text", text: "Analyse this scene for an emergency response." },
+        { type: "image_url", image_url: { url: data.imageDataUrl } },
+      ],
+      temperature: 0.2,
+      maxTokens: 512,
     });
-
-    if (response.status === 429)
-      throw new Error("AI is busy right now — please retry in a moment.");
-    if (response.status === 402) throw new Error("AI credits exhausted for this workspace.");
-    if (!response.ok) throw new Error(`AI analysis failed (${response.status})`);
-
-    const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-    const text = payload.choices?.[0]?.message?.content ?? "";
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("Could not read the AI analysis");
 

@@ -1,8 +1,10 @@
 /**
  * Server-only brain for RESQORA MedAI. Builds the medical-assistant prompt and
- * calls the Lovable AI gateway, returning a strict JSON assessment the chat UI
+ * calls Google's Generative AI API, returning a strict JSON assessment the chat UI
  * can render as a doctor-style card.
  */
+import { runOpenRouter } from "@/lib/openrouter.server";
+
 export type MedAiTurn = { role: "user" | "assistant"; content: string };
 
 export type MedAiAssessment = {
@@ -116,35 +118,28 @@ export async function runMedAi(input: {
   imageDataUrl?: string | null;
   medicalContext?: string | null;
 }): Promise<MedAiAssessment> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("AI is not configured");
-
-  const userContent: unknown[] = [{ type: "text", text: input.message }];
-  if (input.imageDataUrl) {
-    userContent.push({ type: "image_url", image_url: { url: input.imageDataUrl } });
-  }
-
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { "content-type": "application/json", "Lovable-API-Key": key },
-    body: JSON.stringify({
-      model: "google/gemini-3.6-flash",
-      messages: [
-        { role: "system", content: systemPrompt(input.language, input.medicalContext ?? null) },
-        ...input.history.slice(-12),
-        { role: "user", content: userContent },
-      ],
-      response_format: { type: "json_object" },
-    }),
+  const history = input.history
+    .slice(-12)
+    .map((turn) => `${turn.role}: ${turn.content}`)
+    .join("\n");
+  const userContent = [
+    history ? `Conversation history:\n${history}` : null,
+    input.message,
+    input.imageDataUrl ? "The attached image is part of the user's request." : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const content = await runOpenRouter({
+    system: systemPrompt(input.language, input.medicalContext ?? null),
+    user: input.imageDataUrl
+      ? [
+          { type: "text", text: userContent },
+          { type: "image_url", image_url: { url: input.imageDataUrl } },
+        ]
+      : userContent,
+    temperature: 0.4,
+    maxTokens: 2048,
   });
-
-  if (response.status === 429)
-    throw new Error("MedAI is busy right now — please retry in a moment.");
-  if (response.status === 402) throw new Error("AI credits exhausted for this workspace.");
-  if (!response.ok) throw new Error(`MedAI request failed (${response.status})`);
-
-  const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-  const content = payload.choices?.[0]?.message?.content ?? "";
   const json = content.slice(content.indexOf("{"), content.lastIndexOf("}") + 1);
   try {
     return coerce(JSON.parse(json));

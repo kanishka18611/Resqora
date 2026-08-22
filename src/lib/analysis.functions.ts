@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { runOpenRouter } from "@/lib/openrouter.server";
 
 const Input = z.object({
   description: z.string().min(3).max(2000),
@@ -21,32 +22,16 @@ Read the caller's description of what happened and respond ONLY with compact JSO
 Give 3-5 firstAid steps that a bystander can safely perform right now. Never tell the user to delay calling emergency services.`;
 
 export const analyzeEmergencyDescription = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => Input.parse(input))
+  .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<EmergencyAnalysis> => {
     const { enforceLimit } = await import("@/lib/rate-limit.server");
     enforceLimit(getRequest(), "analysis", 12, 60_000);
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("AI is not configured");
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "content-type": "application/json", "Lovable-API-Key": key },
-      body: JSON.stringify({
-        model: "google/gemini-3.6-flash",
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: data.description },
-        ],
-      }),
+    const text = await runOpenRouter({
+      system: SYSTEM,
+      user: data.description,
+      temperature: 0.2,
+      maxTokens: 512,
     });
-
-    if (response.status === 429)
-      throw new Error("AI is busy right now — please retry in a moment.");
-    if (response.status === 402) throw new Error("AI credits exhausted for this workspace.");
-    if (!response.ok) throw new Error(`AI analysis failed (${response.status})`);
-
-    const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-    const text = payload.choices?.[0]?.message?.content ?? "";
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("Could not read the AI analysis");
 

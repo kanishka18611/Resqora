@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { runOpenRouter } from "@/lib/openrouter.server";
 
 const Input = z.object({
   type: z.string().min(2).max(40),
@@ -38,13 +39,10 @@ Respond ONLY with compact JSON:
 Rules: 4-7 actions ordered by urgency, 2-4 watchFor signs, etaMinutes is a realistic arrival estimate for the nearest listed responder. Never advise delaying emergency services.`;
 
 export const generateActionPlan = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => Input.parse(input))
+  .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<CoordinatorPlan> => {
     const { enforceLimit } = await import("@/lib/rate-limit.server");
     enforceLimit(getRequest(), "coordinator", 20, 60_000);
-    const key = process.env["LOVABLE_API_KEY"];
-    if (!key) throw new Error("AI is not configured");
-
     const prompt = [
       `Emergency type: ${data.type}`,
       `Reported severity: ${data.severity}`,
@@ -57,25 +55,12 @@ export const generateActionPlan = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join("\n");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "content-type": "application/json", "Lovable-API-Key": key },
-      body: JSON.stringify({
-        model: "google/gemini-3.6-flash",
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: prompt },
-        ],
-      }),
+    const text = await runOpenRouter({
+      system: SYSTEM,
+      user: prompt,
+      temperature: 0.2,
+      maxTokens: 1024,
     });
-
-    if (response.status === 429)
-      throw new Error("AI is busy right now — please retry in a moment.");
-    if (response.status === 402) throw new Error("AI credits exhausted for this workspace.");
-    if (!response.ok) throw new Error(`Coordinator failed (${response.status})`);
-
-    const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-    const text = payload.choices?.[0]?.message?.content ?? "";
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("Could not read the coordination plan");
     const parsed = JSON.parse(match[0]) as Partial<CoordinatorPlan>;
