@@ -251,6 +251,7 @@ RESQORA is built as a **React full-stack application** using:
 - **Supabase Realtime**: Real-time emergency updates to guardians and contacts
 
 ### External Integrations
+- **OpenRouter**: Server-side AI inference for triage, coordination, and scene analysis
 - **Firebase**: Push notifications via Cloud Messaging
 - **EmailJS**: Transactional emergency alerts via email
 - **Maps API**: Location visualization and nearby service discovery
@@ -280,6 +281,7 @@ RESQORA is built as a **React full-stack application** using:
 | TanStack React Query | Server state & caching |
 | Supabase | Database, auth, realtime, storage |
 | PostgreSQL | Primary data store |
+| OpenRouter | AI inference for emergency assistance and analysis |
 | Tailwind CSS | Styling |
 | Radix UI | Accessible components |
 | Vite | Build tool & dev server |
@@ -315,7 +317,7 @@ RESQORA is built as a **React full-stack application** using:
 - **Audit trail**: Security events logged for compliance
 
 ### Environment & Secrets
-- **API keys**: Supabase key, Firebase config, EmailJS credentials stored in `.env`
+- **API keys**: Supabase, OpenRouter, Firebase, Maps, EmailJS, and optional SMS credentials stored in `.env`
 - **Never committed**: `.env` excluded from version control via `.gitignore`
 - **Public/private separation**: VITE_ prefix for client-accessible variables only
 - **Developers**: Use `.env.example` template; never commit actual keys
