@@ -16,7 +16,7 @@ const Input = z.object({
  */
 export const sendEmergencyPush = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => Input.parse(input))
+  .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data, context }) => {
     const { data: emergency, error } = await context.supabase
       .from("emergencies")

@@ -27,11 +27,10 @@ export type SendAlertsResponse = {
  * can hand the exact same message to WhatsApp / SMS / email apps instead.
  */
 export const sendEmergencyAlerts = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => Input.parse(input))
+  .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<SendAlertsResponse> => {
-    const lovableKey = process.env.LOVABLE_API_KEY;
     const connectionKey = process.env.GATEWAYAPI_API_KEY;
-    if (!lovableKey || !connectionKey) return { configured: false, results: [] };
+    if (!connectionKey) return { configured: false, results: [] };
 
     const results: SendResult[] = [];
     for (const recipient of data.recipients) {
@@ -41,22 +40,18 @@ export const sendEmergencyAlerts = createServerFn({ method: "POST" })
         continue;
       }
       try {
-        const response = await fetch(
-          "https://connector-gateway.lovable.dev/gatewayapi/mobile/single",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${lovableKey}`,
-              "X-Connection-Api-Key": connectionKey,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              sender: "RESQORA",
-              recipient: msisdn,
-              message: data.message.slice(0, 1000),
-            }),
+        const response = await fetch("https://gatewayapi.com/rest/mtsms", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${connectionKey}`,
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            sender: "RESQORA",
+            recipients: [{ msisdn }],
+            message: data.message.slice(0, 1000),
+          }),
+        });
         if (!response.ok) {
           const body = await response.text();
           console.error(`RESQORA SMS failed [${response.status}]: ${body}`);

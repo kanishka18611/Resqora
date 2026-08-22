@@ -25,7 +25,7 @@ const Input = z.object({
 /** Authenticated medical-assistant turn: triage, first aid and specialist advice. */
 export const askMedAi = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => Input.parse(input))
+  .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<MedAiAssessment> => {
     const { enforceLimit } = await import("@/lib/rate-limit.server");
     enforceLimit(getRequest(), "medai", 20, 60_000);

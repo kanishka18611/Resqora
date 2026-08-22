@@ -19,30 +19,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      setSession(nextSession);
-      if (nextSession) markSessionActive();
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
-        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
-      }
-      if (event === "SIGNED_IN" && nextSession?.user) {
-        void logActivity(nextSession.user.id, "Signed in", nextSession.user.email ?? undefined);
-      }
-    });
+    try {
+      const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
+        setSession(nextSession);
+        if (nextSession) markSessionActive();
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+          if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+        }
+        if (event === "SIGNED_IN" && nextSession?.user) {
+          void logActivity(nextSession.user.id, "Signed in", nextSession.user.email ?? undefined);
+        }
+      });
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session && shouldForceSignOut()) {
-        await supabase.auth.signOut();
-        setSession(null);
+      supabase.auth.getSession().then(async ({ data }) => {
+        if (data.session && shouldForceSignOut()) {
+          await supabase.auth.signOut();
+          setSession(null);
+          setLoading(false);
+          return;
+        }
+        if (data.session) markSessionActive();
+        setSession(data.session);
         setLoading(false);
-        return;
-      }
-      if (data.session) markSessionActive();
-      setSession(data.session);
-      setLoading(false);
-    });
+      });
 
-    return () => sub.subscription.unsubscribe();
+      return () => sub.subscription.unsubscribe();
+    } catch (error) {
+      // The public app can run without a Supabase project; cloud features stay signed out.
+      console.warn("Supabase is not configured; running in local mode.", error);
+      setSession(null);
+      setLoading(false);
+    }
   }, [queryClient]);
 
   const value = useMemo<AuthContextValue>(

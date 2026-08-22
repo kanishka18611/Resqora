@@ -46,7 +46,7 @@ export function mapsPlaceLink(place: { lat: number; lng: number; name?: string |
  * OpenStreetMap embed otherwise, so a map always renders.
  */
 export function mapsEmbedUrl(coords: Coords, zoom = 16) {
-  const key = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
   if (key) {
     return `https://www.google.com/maps/embed/v1/view?key=${key}&center=${coords.lat},${coords.lng}&zoom=${zoom}&maptype=roadmap`;
   }
